@@ -869,7 +869,8 @@ elif st.session_state.page == "admin_login":
 # ADMIN HOME
 # ════════════════════════════════════════════════════════════════
 elif st.session_state.page == "admin_home":
-    from utils.database import get_stats,get_all_queries,get_all_detections,get_all_kb,add_kb_entry,delete_kb_entry
+    # app.py এর ইমপোর্ট লাইনটি এভাবে আপডেট করুন:
+from utils.database import get_stats, get_recent_queries, get_detections, get_kb_entries, add_kb_entry, delete_kb_entry
     import pandas as pd
     if not st.session_state.admin_logged_in: go("admin_login")
     st.markdown(topbar_html(user_name=st.session_state.get("admin_user","admin"),is_admin=True),unsafe_allow_html=True)
