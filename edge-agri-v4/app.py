@@ -844,15 +844,13 @@ elif st.session_state.page == "user_home":
 # ADMIN LOGIN
 # ════════════════════════════════════════════════════════════════
 elif st.session_state.page == "admin_login":
-    # সঠিক Indentation (৪টি স্পেস ডানে)
     from utils.database import verify_admin
-    
     st.markdown(topbar_html(), unsafe_allow_html=True)
     
     if st.button("← Back", key="back_al"): 
         st.session_state.page = "landing"
         st.rerun()
-        
+
     st.markdown('<style>.stApp>[data-testid="stAppViewContainer"]>[data-testid="stMain"]{background:radial-gradient(ellipse at 50% 30%,rgba(200,16,46,.14) 0%,transparent 60%),linear-gradient(160deg,#090406 0%,#0c0507 100%)!important;}</style>', unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
     
@@ -869,24 +867,33 @@ elif st.session_state.page == "admin_login":
                 if verify_admin(username, password):
                     st.session_state.admin_logged_in = True
                     st.session_state.admin_user = username
-                    st.session_state.page = "admin_home" # go() এর বদলে সরাসরি স্টেট সেট করা নিরাপদ
+                    st.session_state.page = "admin_home"
                     st.rerun()
                 else:
                     st.error("❌ Invalid credentials")
-                    
         st.caption("Default: admin / admin123")
+
 # ════════════════════════════════════════════════════════════════
 # ADMIN HOME
 # ════════════════════════════════════════════════════════════════
 elif st.session_state.page == "admin_home":
-    # app.py এর ইমপোর্ট লাইনটি এভাবে আপডেট করুন:
-from utils.database import get_stats, get_recent_queries, get_detections, get_kb_entries, add_kb_entry, delete_kb_entry
+    from utils.database import get_stats, get_recent_queries, get_detections, get_kb_entries, add_kb_entry, delete_kb_entry
     import pandas as pd
-    if not st.session_state.admin_logged_in: go("admin_login")
-    st.markdown(topbar_html(user_name=st.session_state.get("admin_user","admin"),is_admin=True),unsafe_allow_html=True)
-    _,lc2 = st.columns([9,1])
+    import datetime
+
+    if not st.session_state.get("admin_logged_in", False): 
+        st.session_state.page = "admin_login"
+        st.rerun()
+
+    st.markdown(topbar_html(user_name=st.session_state.get("admin_user", "admin"), is_admin=True), unsafe_allow_html=True)
+    
+    _, lc2 = st.columns([9, 1])
     with lc2:
-        if st.button("🚪 Logout",key="alo"): st.session_state.admin_logged_in=False; go("landing")
+        if st.button("🚪 Logout", key="alo"): 
+            st.session_state.admin_logged_in = False
+            st.session_state.page = "landing"
+            st.rerun()
+
     stats = get_stats()
     st.markdown(f"""
     <div style="margin-top:62px;">
@@ -897,53 +904,88 @@ from utils.database import get_stats, get_recent_queries, get_detections, get_kb
             </div>
             <div style="color:rgba(255,255,255,.2);font-size:10px;text-align:right;">Edge-Agri v4<br>{datetime.datetime.now().strftime('%d %b %Y %H:%M')}</div>
         </div>
-    </div>""",unsafe_allow_html=True)
-    st.markdown('<div style="padding:24px 32px;">',unsafe_allow_html=True)
-    a1,a2,a3,a4 = st.columns(4)
-    for col,val,lbl,clr in [(a1,stats["total_queries"],"Total Queries","#4ade80"),(a2,stats["today_queries"],"Today","#f42a41"),(a3,stats["kb_count"],"KB Entries","#f59e0b"),(a4,f'{stats["avg_confidence"]}%',"Avg Accuracy","#60a5fa")]:
-        col.markdown(f'<div class="admin-kpi" style="border-top:3px solid {clr};"><div class="admin-kpi-val" style="color:{clr};">{val}</div><div class="admin-kpi-lbl">{lbl}</div></div>',unsafe_allow_html=True)
-    st.markdown("<br>",unsafe_allow_html=True)
-    t1,t2,t3,t4 = st.tabs(["💬 Query Logs","🔬 Detection Logs","📚 Knowledge Base","➕ Add Entry"])
+    </div>""", unsafe_allow_html=True)
+
+    st.markdown('<div style="padding:24px 32px;">', unsafe_allow_html=True)
+    
+    a1, a2, a3, a4 = st.columns(4)
+    kpis = [
+        (a1, stats["total_queries"], "Total Queries", "#4ade80"),
+        (a2, stats["today_queries"], "Today", "#f42a41"),
+        (a3, stats["kb_count"], "KB Entries", "#f59e0b"),
+        (a4, f'{stats["avg_confidence"]}%', "Avg Accuracy", "#60a5fa")
+    ]
+    
+    for col, val, lbl, clr in kpis:
+        col.markdown(f'<div class="admin-kpi" style="border-top:3px solid {clr};"><div class="admin-kpi-val" style="color:{clr};">{val}</div><div class="admin-kpi-lbl">{lbl}</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    t1, t2, t3, t4 = st.tabs(["💬 Query Logs", "🔬 Detection Logs", "📚 Knowledge Base", "➕ Add Entry"])
+
     with t1:
-        qs = get_all_queries(500)
+        qs = get_recent_queries(500)
         if qs:
-            df = pd.DataFrame(qs)[["id","query_text","query_lang","confidence_score","district","created_at"]]
-            df.columns = ["#","Query","Lang","Confidence","District","Time"]
+            df = pd.DataFrame(qs)
+            # ডাটাবেজ কলামের নাম অনুযায়ী ফিল্টার
+            df = df[["query_text", "query_lang", "confidence_score", "district", "created_at"]]
+            df.columns = ["Query", "Lang", "Confidence", "District", "Time"]
             df["Confidence"] = df["Confidence"].apply(lambda x: f"{round((x or 0)*100,1)}%")
-            st.dataframe(df,use_container_width=True,hide_index=True)
-        else: st.info("No queries yet.")
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else: 
+            st.info("No queries yet.")
+
     with t2:
-        ds2 = get_all_detections(500)
+        ds2 = get_detections(500)
         if ds2:
-            df2 = pd.DataFrame(ds2)[["id","image_name","plant_type","detected_disease","confidence","severity","created_at"]]
-            df2.columns = ["#","Image","Plant","Disease","Confidence","Severity","Time"]
+            df2 = pd.DataFrame(ds2)
+            df2 = df2[["image_name", "plant_type", "detected_disease", "confidence", "severity", "created_at"]]
+            df2.columns = ["Image", "Plant", "Disease", "Confidence", "Severity", "Time"]
             df2["Confidence"] = df2["Confidence"].apply(lambda x: f"{round((x or 0)*100,1)}%")
-            st.dataframe(df2,use_container_width=True,hide_index=True)
-        else: st.info("No detections yet.")
+            st.dataframe(df2, use_container_width=True, hide_index=True)
+        else: 
+            st.info("No detections yet.")
+
     with t3:
-        srch = st.text_input("🔍 Search",placeholder="Search knowledge base...")
-        kb = get_all_kb()
-        if srch: kb = [k for k in kb if srch.lower() in (k["question_bn"] or "").lower() or srch.lower() in (k.get("keywords") or "").lower()]
+        srch = st.text_input("🔍 Search", placeholder="Search knowledge base...")
+        kb = get_kb_entries()
+        if srch: 
+            kb = [k for k in kb if srch.lower() in (k["question_bn"] or "").lower() or srch.lower() in (k.get("keywords") or "").lower()]
+        
         st.caption(f"**{len(kb)}** entries")
         for item in kb:
             with st.expander(f"[{item['category']}] {item['question_bn'][:60]}…"):
-                c1,c2 = st.columns([4,1])
+                c1, c2 = st.columns([4, 1])
                 with c1:
                     st.write(f"**BN:** {item['answer_bn'][:250]}…")
                     if item.get('answer_en'): st.caption(f"EN: {item['answer_en'][:200]}…")
                     st.caption(f"Source: {item['source']} · KW: {item.get('keywords','')}")
                 with c2:
-                    if st.button("🗑️",key=f"del_{item['id']}"): delete_kb_entry(item["id"]); st.rerun()
+                    if st.button("🗑️", key=f"del_{item['id']}"): 
+                        delete_kb_entry(item["id"])
+                        st.rerun()
+
     with t4:
         with st.form("addkb"):
-            cats = ["ধানের রোগ","সার ব্যবস্থাপনা","পোকামাকড়","সেচ ব্যবস্থাপনা","আবহাওয়া ও মৌসুম","ফসল কাটা","মাটি পরীক্ষা","বীজ ব্যবস্থাপনা","জৈব চাষ","বাজার ও বিক্রয়","অন্যান্য"]
-            e1,e2 = st.columns(2)
-            with e1: cat = st.selectbox("Category *",cats); src = st.text_input("Source",value="BRRI Manual 2024")
-            with e2: kw = st.text_input("Keywords",placeholder="blast,disease"); qen = st.text_input("Q (English)",placeholder="Optional")
-            qbn = st.text_input("Question (বাংলা) *",placeholder="বাংলায় প্রশ্ন লিখুন...")
-            abn = st.text_area("Answer (বাংলা) *",height=90,placeholder="বিস্তারিত উত্তর...")
-            aen = st.text_area("Answer (English)",height=70,placeholder="Optional...")
-            if st.form_submit_button("💾 Save Entry",type="primary",use_container_width=True):
-                if qbn and abn: add_kb_entry(cat,qbn,abn,src,kw,qen,aen); st.success("✅ Saved!"); st.rerun()
-                else: st.error("Bengali Q&A required!")
-    st.markdown('</div>',unsafe_allow_html=True)
+            cats = ["ধানের রোগ", "সার ব্যবস্থাপনা", "পোকামাকড়", "সেচ ব্যবস্থাপনা", "আবহাওয়া ও মৌসুম", "ফসল কাটা", "মাটি পরীক্ষা", "বীজ ব্যবস্থাপনা", "জৈব চাষ", "বাজার ও বিক্রয়", "অন্যান্য"]
+            e1, e2 = st.columns(2)
+            with e1: 
+                cat = st.selectbox("Category *", cats)
+                src = st.text_input("Source", value="BRRI Manual 2024")
+            with e2: 
+                kw = st.text_input("Keywords", placeholder="blast,disease")
+                qen = st.text_input("Q (English)", placeholder="Optional")
+            
+            qbn = st.text_input("Question (বাংলা) *", placeholder="বাংলায় প্রশ্ন লিখুন...")
+            abn = st.text_area("Answer (বাংলা) *", height=90, placeholder="বিস্তারিত উত্তর...")
+            aen = st.text_area("Answer (English)", height=70, placeholder="Optional...")
+            
+            if st.form_submit_button("💾 Save Entry", type="primary", use_container_width=True):
+                if qbn and abn: 
+                    # database.py অনুযায়ী: cat, q_bn, q_en, a_bn, a_en, a_zh, source, keywords
+                    add_kb_entry(cat, qbn, qen, abn, aen, "", src, kw)
+                    st.success("✅ Saved!")
+                    st.rerun()
+                else: 
+                    st.error("Bengali Q&A required!")
+                    
+    st.markdown('</div>', unsafe_allow_html=True)
