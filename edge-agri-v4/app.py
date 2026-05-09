@@ -844,27 +844,37 @@ elif st.session_state.page == "user_home":
 # ADMIN LOGIN
 # ════════════════════════════════════════════════════════════════
 elif st.session_state.page == "admin_login":
+    # সঠিক Indentation (৪টি স্পেস ডানে)
     from utils.database import verify_admin
-    st.markdown(topbar_html(),unsafe_allow_html=True)
-    if st.button("← Back",key="back_al"): go("landing")
-    st.markdown('<style>.stApp>[data-testid="stAppViewContainer"]>[data-testid="stMain"]{background:radial-gradient(ellipse at 50% 30%,rgba(200,16,46,.14) 0%,transparent 60%),linear-gradient(160deg,#090406 0%,#0c0507 100%)!important;}</style>',unsafe_allow_html=True)
-    st.markdown("<br><br>",unsafe_allow_html=True)
-    _,col,_ = st.columns([1,1.1,1])
+    
+    st.markdown(topbar_html(), unsafe_allow_html=True)
+    
+    if st.button("← Back", key="back_al"): 
+        st.session_state.page = "landing"
+        st.rerun()
+        
+    st.markdown('<style>.stApp>[data-testid="stAppViewContainer"]>[data-testid="stMain"]{background:radial-gradient(ellipse at 50% 30%,rgba(200,16,46,.14) 0%,transparent 60%),linear-gradient(160deg,#090406 0%,#0c0507 100%)!important;}</style>', unsafe_allow_html=True)
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    _, col, _ = st.columns([1, 1.1, 1])
     with col:
-        st.markdown('<div class="auth-card animate-in"><div class="auth-head admin"><div class="auth-icon admin">🔐</div><div class="auth-title">Admin Portal</div><div class="auth-sub">Restricted — Administrators Only</div></div></div>',unsafe_allow_html=True)
-        st.markdown("<br>",unsafe_allow_html=True)
+        st.markdown('<div class="auth-card animate-in"><div class="auth-head admin"><div class="auth-icon admin">🔐</div><div class="auth-title">Admin Portal</div><div class="auth-sub">Restricted — Administrators Only</div></div></div>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        
         with st.form("alf"):
-            username = st.text_input("👤 Username",placeholder="admin")
-            password = st.text_input("🔑 Password",type="password",placeholder="••••••••")
-            if st.form_submit_button("🔐 Sign In",use_container_width=True,type="primary"):
-                if verify_admin(username,password):
+            username = st.text_input("👤 Username", placeholder="admin")
+            password = st.text_input("🔑 Password", type="password", placeholder="••••••••")
+            
+            if st.form_submit_button("🔐 Sign In", use_container_width=True, type="primary"):
+                if verify_admin(username, password):
                     st.session_state.admin_logged_in = True
                     st.session_state.admin_user = username
-                    go("admin_home")
+                    st.session_state.page = "admin_home" # go() এর বদলে সরাসরি স্টেট সেট করা নিরাপদ
+                    st.rerun()
                 else:
                     st.error("❌ Invalid credentials")
+                    
         st.caption("Default: admin / admin123")
-
 # ════════════════════════════════════════════════════════════════
 # ADMIN HOME
 # ════════════════════════════════════════════════════════════════
